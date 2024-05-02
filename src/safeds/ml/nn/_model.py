@@ -3,7 +3,8 @@ from __future__ import annotations
 import copy
 from typing import TYPE_CHECKING, Generic, Self, TypeVar
 
-from safeds.data.tabular.containers import Table, TaggedTable, TimeSeries
+from safeds.data.labeled.containers import TabularDataset
+from safeds.data.tabular.containers import Table, TimeSeries
 from safeds.exceptions import (
     ClosedBound,
     FeatureDataMismatchError,
@@ -21,9 +22,9 @@ if TYPE_CHECKING:
     from safeds.ml.nn._layer import _Layer
     from safeds.ml.nn._output_conversion import _OutputConversion
 
-IFT = TypeVar("IFT", TaggedTable, TimeSeries)  # InputFitType
+IFT = TypeVar("IFT", TabularDataset, TimeSeries)  # InputFitType
 IPT = TypeVar("IPT", Table, TimeSeries)  # InputPredictType
-OT = TypeVar("OT", TaggedTable, TimeSeries)  # OutputType
+OT = TypeVar("OT", TabularDataset, TimeSeries)  # OutputType
 
 
 class NeuralNetworkRegressor(Generic[IFT, IPT, OT]):
@@ -58,29 +59,29 @@ class NeuralNetworkRegressor(Generic[IFT, IPT, OT]):
 
         Parameters
         ----------
-        train_data
+        train_data:
             The data the network should be trained on.
-        epoch_size
+        epoch_size:
             The number of times the training cycle should be done.
-        batch_size
+        batch_size:
             The size of data batches that should be loaded at one time.
-        learning_rate
+        learning_rate:
             The learning rate of the neural network.
-        callback_on_batch_completion
+        callback_on_batch_completion:
             Function used to view metrics while training. Gets called after a batch is completed with the index of the last batch and the overall loss average.
-        callback_on_epoch_completion
+        callback_on_epoch_completion:
             Function used to view metrics while training. Gets called after an epoch is completed with the index of the last epoch and the overall loss average.
+
+        Returns
+        -------
+        trained_model:
+            The trained Model
 
         Raises
         ------
         ValueError
             If epoch_size < 1
             If batch_size < 1
-
-        Returns
-        -------
-        trained_model :
-            The trained Model
         """
         import torch
         from torch import nn
@@ -140,12 +141,12 @@ class NeuralNetworkRegressor(Generic[IFT, IPT, OT]):
 
         Parameters
         ----------
-        test_data
+        test_data:
             The data the network should predict.
 
         Returns
         -------
-        prediction :
+        prediction:
             The given test_data with an added "prediction" column at the end
 
         Raises
@@ -169,14 +170,7 @@ class NeuralNetworkRegressor(Generic[IFT, IPT, OT]):
 
     @property
     def is_fitted(self) -> bool:
-        """
-        Check if the model is fitted.
-
-        Returns
-        -------
-        is_fitted
-            Whether the model is fitted.
-        """
+        """Whether the model is fitted."""
         return self._is_fitted
 
 
@@ -213,29 +207,29 @@ class NeuralNetworkClassifier(Generic[IFT, IPT, OT]):
 
         Parameters
         ----------
-        train_data
+        train_data:
             The data the network should be trained on.
-        epoch_size
+        epoch_size:
             The number of times the training cycle should be done.
-        batch_size
+        batch_size:
             The size of data batches that should be loaded at one time.
-        learning_rate
+        learning_rate:
             The learning rate of the neural network.
-        callback_on_batch_completion
+        callback_on_batch_completion:
             Function used to view metrics while training. Gets called after a batch is completed with the index of the last batch and the overall loss average.
-        callback_on_epoch_completion
+        callback_on_epoch_completion:
             Function used to view metrics while training. Gets called after an epoch is completed with the index of the last epoch and the overall loss average.
+
+        Returns
+        -------
+        trained_model:
+            The trained Model
 
         Raises
         ------
         ValueError
             If epoch_size < 1
             If batch_size < 1
-
-        Returns
-        -------
-        trained_model :
-            The trained Model
         """
         import torch
         from torch import nn
@@ -302,12 +296,12 @@ class NeuralNetworkClassifier(Generic[IFT, IPT, OT]):
 
         Parameters
         ----------
-        test_data
+        test_data:
             The data the network should predict.
 
         Returns
         -------
-        prediction :
+        prediction:
             The given test_data with an added "prediction" column at the end
 
         Raises
@@ -334,14 +328,7 @@ class NeuralNetworkClassifier(Generic[IFT, IPT, OT]):
 
     @property
     def is_fitted(self) -> bool:
-        """
-        Check if the model is fitted.
-
-        Returns
-        -------
-        is_fitted :
-            Whether the model is fitted.
-        """
+        """Whether the model is fitted."""
         return self._is_fitted
 
 
