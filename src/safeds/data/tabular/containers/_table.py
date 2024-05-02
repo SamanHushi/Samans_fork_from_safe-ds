@@ -2148,11 +2148,7 @@ class Table:
         buffer.seek(0)
         return Image.from_bytes(buffer.read())
 
-<<<<<<< HEAD
-    def plot_histograms(self, *, number_of_bins : int = 10) -> Image:
-=======
     def plot_histograms(self, *, number_of_bins: int = 10) -> Image:
->>>>>>> 43717e0431667de6b4da09543240c45c8c3f83ff
         """
         Plot a histogram for every column.
 
@@ -2183,11 +2179,7 @@ class Table:
         fig, axs = plt.subplots(n_rows, n_cols, tight_layout=True, figsize=(n_cols * 3, n_rows * 3))
 
         col_names = self.column_names
-<<<<<<< HEAD
-        for col_name, ax in zip(col_names, axs.flatten() if not one_col else [axs]):
-=======
         for col_name, ax in zip(col_names, axs.flatten() if not one_col else [axs], strict=False):
->>>>>>> 43717e0431667de6b4da09543240c45c8c3f83ff
             np_col = np.array(self.get_column(col_name))
             bins = min(number_of_bins, len(pd.unique(np_col)))
 
@@ -2205,26 +2197,16 @@ class Table:
 
                     bars = np.array([])
                     for i in range(len(hist)):
-<<<<<<< HEAD
-                        bars = np.append(bars, f'{round(bin_edges[i], 2)}-{round(bin_edges[i+1], 2)}')
-
-                    ax.bar(bars, hist, edgecolor='black')
-=======
                         bars = np.append(bars, f"{round(bin_edges[i], 2)}-{round(bin_edges[i+1], 2)}")
 
                     ax.bar(bars, hist, edgecolor="black")
->>>>>>> 43717e0431667de6b4da09543240c45c8c3f83ff
                     ax.set_xticks(np.arange(len(hist)), bars, rotation=45, horizontalalignment="right")
                     continue
 
             np_col = np_col.astype(str)
             unique_values = np.unique(np_col)
             hist = np.array([np.sum(np_col == value) for value in unique_values])
-<<<<<<< HEAD
-            ax.bar(unique_values, hist, edgecolor='black')
-=======
             ax.bar(unique_values, hist, edgecolor="black")
->>>>>>> 43717e0431667de6b4da09543240c45c8c3f83ff
             ax.set_xticks(np.arange(len(unique_values)), unique_values, rotation=45, horizontalalignment="right")
 
         for i in range(len(col_names), n_rows * n_cols):
