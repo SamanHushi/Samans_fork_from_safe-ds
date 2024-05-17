@@ -1,114 +1,78 @@
 """Custom exceptions that can be raised by Safe-DS."""
 
-from typing import TYPE_CHECKING
-
-import apipkg
-
-if TYPE_CHECKING:
-    from safeds.exceptions._data import (
-        ColumnIsTargetError,
-        ColumnIsTimeError,
-        ColumnLengthMismatchError,
-        ColumnSizeError,
-        DuplicateColumnNameError,
-        DuplicateIndexError,
-        IllegalFormatError,
-        IllegalSchemaModificationError,
-        IndexOutOfBoundsError,
-        MissingValuesColumnError,
-        NonNumericColumnError,
-        TransformerNotFittedError,
-        UnknownColumnNameError,
-        ValueNotPresentWhenFittedError,
-        WrongFileExtensionError,
-    )
-    from safeds.exceptions._generic import (
-        Bound,
-        ClosedBound,
-        OpenBound,
-        OutOfBoundsError,
-    )
-    from safeds.exceptions._ml import (
-        DatasetMissesDataError,
-        DatasetMissesFeaturesError,
-        FeatureDataMismatchError,
-        InputSizeError,
-        LearningError,
-        ModelNotFittedError,
-        NonTimeSeriesError,
-        PlainTableError,
-        PredictionError,
-    )
-
-apipkg.initpkg(
-    __name__,
-    {
-        # Generic exceptions
-        "OutOfBoundsError": "._generic:OutOfBoundsError",
-        # Data exceptions
-        "ColumnIsTargetError": "._data:ColumnIsTargetError",
-        "ColumnIsTimeError": "._data:ColumnIsTimeError",
-        "ColumnLengthMismatchError": "._data:ColumnLengthMismatchError",
-        "ColumnSizeError": "._data:ColumnSizeError",
-        "DuplicateColumnNameError": "._data:DuplicateColumnNameError",
-        "DuplicateIndexError": "._data:DuplicateIndexError",
-        "IllegalFormatError": "._data:IllegalFormatError",
-        "IllegalSchemaModificationError": "._data:IllegalSchemaModificationError",
-        "IndexOutOfBoundsError": "._data:IndexOutOfBoundsError",
-        "MissingValuesColumnError": "._data:MissingValuesColumnError",
-        "NonNumericColumnError": "._data:NonNumericColumnError",
-        "TransformerNotFittedError": "._data:TransformerNotFittedError",
-        "UnknownColumnNameError": "._data:UnknownColumnNameError",
-        "ValueNotPresentWhenFittedError": "._data:ValueNotPresentWhenFittedError",
-        "WrongFileExtensionError": "._data:WrongFileExtensionError",
-        # ML exceptions
-        "DatasetMissesDataError": "._ml:DatasetMissesDataError",
-        "DatasetMissesFeaturesError": "._ml:DatasetMissesFeaturesError",
-        "FeatureDataMismatchError": "._ml:FeatureDataMismatchError",
-        "InputSizeError": "._ml:InputSizeError",
-        "LearningError": "._ml:LearningError",
-        "ModelNotFittedError": "._ml:ModelNotFittedError",
-        "NonTimeSeriesError": "._ml:NonTimeSeriesError",
-        "PlainTableError": "._ml:PlainTableError",
-        "PredictionError": "._ml:PredictionError",
-        # Other
-        "Bound": "._generic:Bound",
-        "ClosedBound": "._generic:ClosedBound",
-        "OpenBound": "._generic:OpenBound",
-    },
+from ._data import (
+    ColumnLengthMismatchError,
+    ColumnSizeError,
+    DuplicateColumnError,
+    DuplicateIndexError,
+    IllegalFormatError,
+    IndexOutOfBoundsError,
+    MissingValuesColumnError,
+    NonNumericColumnError,
+    OutputLengthMismatchError,
+    TransformerNotFittedError,
+    ValueNotPresentWhenFittedError,
+)
+from ._ml import (
+    DatasetMissesDataError,
+    DatasetMissesFeaturesError,
+    FeatureDataMismatchError,
+    InputSizeError,
+    InvalidModelStructureError,
+    LearningError,
+    ModelNotFittedError,
+    PlainTableError,
+    PredictionError,
 )
 
+
+class SafeDsError(Exception):
+    """Base class for all exceptions defined by Safe-DS."""
+
+
+class ColumnNotFoundError(SafeDsError):
+    """Exception raised when trying to access an invalid column name."""
+
+
+class ColumnTypeError(SafeDsError):
+    """Exception raised when a column has the wrong type."""
+
+
+class FileExtensionError(SafeDsError):
+    """Exception raised when a path has the wrong file extension."""
+
+
+class OutOfBoundsError(SafeDsError):
+    """Exception raised when a value is outside its expected range."""
+
+
 __all__ = [
-    # Generic exceptions
+    "SafeDsError",
+    "ColumnNotFoundError",
+    "ColumnTypeError",
+    "FileExtensionError",
     "OutOfBoundsError",
+    # TODO
     # Data exceptions
-    "ColumnIsTargetError",
-    "ColumnIsTimeError",
     "ColumnLengthMismatchError",
     "ColumnSizeError",
-    "DuplicateColumnNameError",
+    "DuplicateColumnError",
     "DuplicateIndexError",
     "IllegalFormatError",
-    "IllegalSchemaModificationError",
     "IndexOutOfBoundsError",
     "MissingValuesColumnError",
     "NonNumericColumnError",
+    "OutputLengthMismatchError",
     "TransformerNotFittedError",
-    "UnknownColumnNameError",
     "ValueNotPresentWhenFittedError",
-    "WrongFileExtensionError",
     # ML exceptions
     "DatasetMissesDataError",
     "DatasetMissesFeaturesError",
     "FeatureDataMismatchError",
     "InputSizeError",
+    "InvalidModelStructureError",
     "LearningError",
     "ModelNotFittedError",
-    "NonTimeSeriesError",
     "PlainTableError",
     "PredictionError",
-    # Other
-    "Bound",
-    "ClosedBound",
-    "OpenBound",
 ]

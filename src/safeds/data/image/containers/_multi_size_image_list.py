@@ -5,12 +5,13 @@ import random
 import sys
 from typing import TYPE_CHECKING
 
+from safeds._config import _init_default_device
 from safeds._utils import _structural_hash
-from safeds.data.image.containers import Image, ImageList
-from safeds.data.image.utils._image_transformation_error_and_warning_checks import (
+from safeds.data.image._utils._image_transformation_error_and_warning_checks import (
     _check_blur_errors_and_warnings,
     _check_remove_images_with_size_errors,
 )
+from safeds.data.image.containers import Image, ImageList
 from safeds.exceptions import (
     DuplicateIndexError,
     IllegalFormatError,
@@ -23,6 +24,7 @@ if TYPE_CHECKING:
     from torch import Tensor
 
     from safeds.data.image.containers._single_size_image_list import _SingleSizeImageList
+    from safeds.data.image.typing import ImageSize
 
 
 class _MultiSizeImageList(ImageList):
@@ -42,6 +44,45 @@ class _MultiSizeImageList(ImageList):
     def __init__(self) -> None:
         self._image_list_dict: dict[tuple[int, int], ImageList] = {}  # {image_size: image_list}
         self._indices_to_image_size_dict: dict[int, tuple[int, int]] = {}  # {index: image_size}
+
+    @staticmethod
+    def _create_from_single_sized_image_lists(single_size_image_lists: list[_SingleSizeImageList]) -> ImageList:
+        from safeds.data.image.containers._empty_image_list import _EmptyImageList
+
+        if len(single_size_image_lists) == 0:
+            return _EmptyImageList()
+        elif len(single_size_image_lists) == 1:
+            return single_size_image_lists[0]
+
+        different_channels: bool = False
+        max_channel: None | int = None
+
+        image_list = _MultiSizeImageList()
+        for single_size_image_list in single_size_image_lists:
+            image_size = (single_size_image_list.widths[0], single_size_image_list.heights[0])
+            image_list._image_list_dict[image_size] = single_size_image_list
+            image_list._indices_to_image_size_dict.update(
+                zip(
+                    single_size_image_list._indices_to_tensor_positions.keys(),
+                    [image_size] * len(single_size_image_list),
+                    strict=False,
+                ),
+            )
+            if max_channel is None:
+                max_channel = single_size_image_list.channel
+            elif max_channel < single_size_image_list.channel:
+                different_channels = True
+                max_channel = single_size_image_list.channel
+            elif max_channel > single_size_image_list.channel:
+                different_channels = True
+
+        if different_channels:
+            for size in image_list._image_list_dict:
+                if max_channel is not None and image_list._image_list_dict[size].channel != max_channel:
+                    image_list._image_list_dict[size] = image_list._image_list_dict[size].change_channel(
+                        int(max_channel),
+                    )
+        return image_list
 
     @staticmethod
     def _create_image_list(images: list[Tensor], indices: list[int]) -> ImageList:
@@ -111,6 +152,8 @@ class _MultiSizeImageList(ImageList):
             return NotImplemented
         if not isinstance(other, _MultiSizeImageList) or set(other._image_list_dict) != set(self._image_list_dict):
             return False
+        if self is other:
+            return True
         for image_list_key, image_list_value in self._image_list_dict.items():
             if image_list_value != other._image_list_dict[image_list_key]:
                 return False
@@ -157,6 +200,15 @@ class _MultiSizeImageList(ImageList):
     @property
     def channel(self) -> int:
         return next(iter(self._image_list_dict.values())).channel
+
+    @property
+    def sizes(self) -> list[ImageSize]:
+        sizes = {}
+        for image_list in self._image_list_dict.values():
+            indices = image_list._as_single_size_image_list()._tensor_positions_to_indices
+            for i, index in enumerate(indices):
+                sizes[index] = image_list.sizes[i]
+        return [sizes[index] for index in sorted(sizes)]
 
     @property
     def number_of_sizes(self) -> int:
@@ -377,6 +429,8 @@ class _MultiSizeImageList(ImageList):
     def remove_images_with_size(self, width: int, height: int) -> ImageList:
         import torch
 
+        _init_default_device()
+
         _check_remove_images_with_size_errors(width, height)
         if (width, height) not in self._image_list_dict:
             return self
@@ -448,6 +502,8 @@ class _MultiSizeImageList(ImageList):
     def resize(self, new_width: int, new_height: int) -> ImageList:
         import torch
 
+        _init_default_device()
+
         from safeds.data.image.containers._single_size_image_list import _SingleSizeImageList
 
         image_list_tensors = []
@@ -470,6 +526,8 @@ class _MultiSizeImageList(ImageList):
 
     def crop(self, x: int, y: int, width: int, height: int) -> ImageList:
         import torch
+
+        _init_default_device()
 
         from safeds.data.image.containers._single_size_image_list import _SingleSizeImageList
 

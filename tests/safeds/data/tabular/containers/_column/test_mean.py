@@ -7,15 +7,17 @@ from safeds.exceptions import NonNumericColumnError
     ("values", "expected"),
     [
         ([1, 2, 3], 2),
+        ([1, 2, 3, 4], 2.5),
         ([1, 2, 3, None], 2),
     ],
     ids=[
-        "no missing values",
+        "odd number of values",
+        "even number of values",
         "some missing values",
     ],
 )
-def test_should_return_the_mean_value(values: list, expected: int) -> None:
-    column = Column("A", values)
+def test_should_return_mean_value(values: list, expected: int) -> None:
+    column = Column("col", values)
     assert column.mean() == expected
 
 
@@ -33,6 +35,6 @@ def test_should_return_the_mean_value(values: list, expected: int) -> None:
     ],
 )
 def test_should_raise_if_column_is_not_numeric(values: list) -> None:
-    column = Column("A", values)
+    column = Column("col", values)
     with pytest.raises(NonNumericColumnError):
         column.mean()

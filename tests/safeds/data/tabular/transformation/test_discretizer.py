@@ -1,12 +1,12 @@
 import pytest
 from safeds.data.tabular.containers import Table
 from safeds.data.tabular.transformation import Discretizer
-from safeds.exceptions import NonNumericColumnError, OutOfBoundsError, TransformerNotFittedError, UnknownColumnNameError
+from safeds.exceptions import ColumnNotFoundError, NonNumericColumnError, OutOfBoundsError, TransformerNotFittedError
 
 
 class TestInit:
     def test_should_raise_value_error(self) -> None:
-        with pytest.raises(OutOfBoundsError, match=r"number_of_bins \(=1\) is not inside \[2, \u221e\)\."):
+        with pytest.raises(OutOfBoundsError):
             _ = Discretizer(1)
 
 
@@ -21,8 +21,8 @@ class TestFit:
                     },
                 ),
                 ["col2"],
-                UnknownColumnNameError,
-                r"Could not find column\(s\) 'col2'",
+                ColumnNotFoundError,
+                None,
             ),
             (
                 Table(
@@ -33,8 +33,8 @@ class TestFit:
                     },
                 ),
                 ["col4", "col5"],
-                UnknownColumnNameError,
-                r"Could not find column\(s\) 'col4, col5'",
+                ColumnNotFoundError,
+                None,
             ),
             (Table(), ["col2"], ValueError, "The Discretizer cannot be fitted because the table contains 0 rows"),
             (
@@ -49,14 +49,14 @@ class TestFit:
                 "Tried to do a numerical operation on one or multiple non-numerical columns: \ncol2 is of type String.",
             ),
         ],
-        ids=["UnknownColumnNameError", "multiple missing columns", "ValueError", "NonNumericColumnError"],
+        ids=["ColumnNotFoundError", "multiple missing columns", "ValueError", "NonNumericColumnError"],
     )
     def test_should_raise_errors(
         self,
         table: Table,
         columns: list[str],
         error: type[Exception],
-        error_message: str,
+        error_message: str | None,
     ) -> None:
         with pytest.raises(error, match=error_message):
             Discretizer().fit(table, columns)
@@ -86,8 +86,8 @@ class TestTransform:
                     },
                 ),
                 ["col1"],
-                UnknownColumnNameError,
-                r"Could not find column\(s\) 'col1'",
+                ColumnNotFoundError,
+                None,
             ),
             (
                 Table(
@@ -96,8 +96,8 @@ class TestTransform:
                     },
                 ),
                 ["col3", "col1"],
-                UnknownColumnNameError,
-                r"Could not find column\(s\) 'col3, col1'",
+                ColumnNotFoundError,
+                None,
             ),
             (Table(), ["col1", "col3"], ValueError, "The table cannot be transformed because it contains 0 rows"),
             (
@@ -111,14 +111,14 @@ class TestTransform:
                 "Tried to do a numerical operation on one or multiple non-numerical columns: \ncol1 is of type String.",
             ),
         ],
-        ids=["UnknownColumnNameError", "multiple missing columns", "ValueError", "NonNumericColumnError"],
+        ids=["ColumnNotFoundError", "multiple missing columns", "ValueError", "NonNumericColumnError"],
     )
     def test_should_raise_errors(
         self,
         table_to_transform: Table,
         columns: list[str],
         error: type[Exception],
-        error_message: str,
+        error_message: str | None,
     ) -> None:
         table_to_fit = Table(
             {
@@ -265,41 +265,3 @@ class TestFitAndTransform:
         )
 
         assert table == expected
-
-    def test_get_names_of_added_columns(self) -> None:
-        transformer = Discretizer()
-        with pytest.raises(TransformerNotFittedError, match=r"The transformer has not been fitted yet."):
-            transformer.get_names_of_added_columns()
-
-        table = Table(
-            {
-                "a": [0.0],
-            },
-        )
-        transformer = transformer.fit(table, None)
-        assert transformer.get_names_of_added_columns() == []
-
-    def test_get_names_of_changed_columns(self) -> None:
-        transformer = Discretizer()
-        with pytest.raises(TransformerNotFittedError, match=r"The transformer has not been fitted yet."):
-            transformer.get_names_of_changed_columns()
-        table = Table(
-            {
-                "a": [0.0],
-            },
-        )
-        transformer = transformer.fit(table, None)
-        assert transformer.get_names_of_changed_columns() == ["a"]
-
-    def test_get_names_of_removed_columns(self) -> None:
-        transformer = Discretizer()
-        with pytest.raises(TransformerNotFittedError, match=r"The transformer has not been fitted yet."):
-            transformer.get_names_of_removed_columns()
-
-        table = Table(
-            {
-                "a": [0.0],
-            },
-        )
-        transformer = transformer.fit(table, None)
-        assert transformer.get_names_of_removed_columns() == []

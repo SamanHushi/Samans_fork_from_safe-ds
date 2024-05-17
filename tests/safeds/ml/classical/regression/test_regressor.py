@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
-import pandas as pd
 import pytest
+from safeds.data.labeled.containers import TabularDataset
 from safeds.data.tabular.containers import Column, Table
 from safeds.exceptions import (
     ColumnLengthMismatchError,
@@ -22,20 +22,17 @@ from safeds.ml.classical.regression import (
     GradientBoostingRegressor,
     KNearestNeighborsRegressor,
     LassoRegressor,
-    LinearRegressionRegressor,
+    LinearRegressor,
     RandomForestRegressor,
     Regressor,
     RidgeRegressor,
-    SupportVectorMachineRegressor,
+    SupportVectorRegressor,
 )
-
-# noinspection PyProtectedMember
 from safeds.ml.classical.regression._regressor import _check_metrics_preconditions
 
 if TYPE_CHECKING:
     from _pytest.fixtures import FixtureRequest
-    from safeds.data.labeled.containers import TabularDataset
-    from sklearn.base import RegressorMixin
+    from sklearn.base import ClassifierMixin, RegressorMixin
 
 
 def regressors() -> list[Regressor]:
@@ -57,10 +54,10 @@ def regressors() -> list[Regressor]:
         GradientBoostingRegressor(),
         KNearestNeighborsRegressor(2),
         LassoRegressor(),
-        LinearRegressionRegressor(),
+        LinearRegressor(),
         RandomForestRegressor(),
         RidgeRegressor(),
-        SupportVectorMachineRegressor(),
+        SupportVectorRegressor(),
     ]
 
 
@@ -324,11 +321,27 @@ class DummyRegressor(Regressor):
     `target_name` must be set to `"expected"`.
     """
 
-    def fit(self, training_set: TabularDataset) -> DummyRegressor:  # noqa: ARG002
+    def __init__(self) -> None:
+        super().__init__()
+
+        self._target_name = "expected"
+
+    def __hash__(self) -> int:
+        raise NotImplementedError
+
+    def _clone(self) -> Self:
         return self
 
-    def predict(self, dataset: Table) -> TabularDataset:
-        # Needed until https://github.com/Safe-DS/Library/issues/75 is fixed
+    def _get_sklearn_model(self) -> ClassifierMixin | RegressorMixin:
+        pass
+
+    def fit(self, _training_set: TabularDataset) -> DummyRegressor:
+        return self
+
+    def predict(self, dataset: Table | TabularDataset) -> TabularDataset:
+        if isinstance(dataset, TabularDataset):
+            dataset = dataset.to_table()
+
         predicted = dataset.get_column("predicted")
         feature = predicted.rename("feature")
         dataset = Table.from_columns([feature, predicted])
@@ -339,8 +352,44 @@ class DummyRegressor(Regressor):
     def is_fitted(self) -> bool:
         return True
 
-    def _get_sklearn_regressor(self) -> RegressorMixin:
-        pass
+
+class TestSummarizeMetrics:
+    @pytest.mark.parametrize(
+        ("predicted", "expected", "result"),
+        [
+            (
+                [1, 2],
+                [1, 2],
+                Table(
+                    {
+                        "metric": [
+                            "coefficient_of_determination",
+                            "mean_absolute_error",
+                            "mean_squared_error",
+                            "median_absolute_deviation",
+                        ],
+                        "value": [
+                            1.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                        ],
+                    },
+                ),
+            ),
+        ],
+    )
+    def test_valid_data(self, predicted: list[float], expected: list[float], result: Table) -> None:
+        table = Table(
+            {
+                "predicted": predicted,
+                "expected": expected,
+            },
+        ).to_tabular_dataset(
+            target_name="expected",
+        )
+
+        assert DummyRegressor().summarize_metrics(table) == result
 
 
 class TestMeanAbsoluteError:
@@ -366,23 +415,6 @@ class TestMeanAbsoluteError:
 
         assert DummyRegressor().mean_absolute_error(table) == result
 
-    @pytest.mark.parametrize(
-        "table",
-        [
-            Table(
-                {
-                    "a": [1.0, 0.0, 0.0, 0.0],
-                    "b": [0.0, 1.0, 1.0, 0.0],
-                    "c": [0.0, 0.0, 0.0, 1.0],
-                },
-            ),
-        ],
-        ids=["table"],
-    )
-    def test_should_raise_if_given_normal_table(self, table: Table) -> None:
-        with pytest.raises(PlainTableError):
-            DummyRegressor().mean_absolute_error(table)  # type: ignore[arg-type]
-
 
 class TestMeanSquaredError:
     @pytest.mark.parametrize(
@@ -396,23 +428,6 @@ class TestMeanSquaredError:
         )
 
         assert DummyRegressor().mean_squared_error(table) == result
-
-    @pytest.mark.parametrize(
-        "table",
-        [
-            Table(
-                {
-                    "a": [1.0, 0.0, 0.0, 0.0],
-                    "b": [0.0, 1.0, 1.0, 0.0],
-                    "c": [0.0, 0.0, 0.0, 1.0],
-                },
-            ),
-        ],
-        ids=["table"],
-    )
-    def test_should_raise_if_given_normal_table(self, table: Table) -> None:
-        with pytest.raises(PlainTableError):
-            DummyRegressor().mean_squared_error(table)  # type: ignore[arg-type]
 
 
 class TestCheckMetricsPreconditions:
@@ -430,7 +445,7 @@ class TestCheckMetricsPreconditions:
         expected: list[str | int],
         error: type[Exception],
     ) -> None:
-        actual_column: Column = Column("actual", pd.Series(actual))
-        expected_column: Column = Column("expected", pd.Series(expected))
+        actual_column: Column = Column("actual", actual)
+        expected_column: Column = Column("expected", expected)
         with pytest.raises(error):
             _check_metrics_preconditions(actual_column, expected_column)

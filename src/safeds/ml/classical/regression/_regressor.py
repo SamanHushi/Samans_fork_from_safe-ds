@@ -1,99 +1,27 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import TYPE_CHECKING
 
-from safeds._utils import _structural_hash
 from safeds.data.labeled.containers import TabularDataset
-from safeds.data.tabular.containers import Column, Table
-from safeds.exceptions import ColumnLengthMismatchError, PlainTableError
+from safeds.exceptions import ColumnLengthMismatchError, ModelNotFittedError
+from safeds.ml.classical import SupervisedModel
+from safeds.ml.metrics import RegressionMetrics
 
 if TYPE_CHECKING:
-    from sklearn.base import RegressorMixin
+    from safeds.data.tabular.containers import Column, Table
 
 
-class Regressor(ABC):
-    """Abstract base class for all regressors."""
+class Regressor(SupervisedModel, ABC):
+    """A model for regression tasks."""
 
-    def __hash__(self) -> int:
+    # ------------------------------------------------------------------------------------------------------------------
+    # Metrics
+    # ------------------------------------------------------------------------------------------------------------------
+
+    def summarize_metrics(self, validation_or_test_set: Table | TabularDataset) -> Table:
         """
-        Return a deterministic hash value for a regressor.
-
-        Returns
-        -------
-        hash:
-            The hash value.
-        """
-        return _structural_hash(self.__class__.__qualname__, self.is_fitted)
-
-    @abstractmethod
-    def fit(self, training_set: TabularDataset) -> Regressor:
-        """
-        Create a copy of this regressor and fit it with the given training data.
-
-        This regressor is not modified.
-
-        Parameters
-        ----------
-        training_set:
-            The training data containing the feature and target vectors.
-
-        Returns
-        -------
-        fitted_regressor:
-            The fitted regressor.
-
-        Raises
-        ------
-        LearningError
-            If the training data contains invalid values or if the training failed.
-        """
-
-    @abstractmethod
-    def predict(self, dataset: Table) -> TabularDataset:
-        """
-        Predict a target vector using a dataset containing feature vectors. The model has to be trained first.
-
-        Parameters
-        ----------
-        dataset:
-            The dataset containing the feature vectors.
-
-        Returns
-        -------
-        table:
-            A dataset containing the given feature vectors and the predicted target vector.
-
-        Raises
-        ------
-        ModelNotFittedError
-            If the model has not been fitted yet.
-        DatasetMissesFeaturesError
-            If the dataset misses feature columns.
-        PredictionError
-            If predicting with the given dataset failed.
-        """
-
-    @property
-    @abstractmethod
-    def is_fitted(self) -> bool:
-        """Whether the regressor is fitted."""
-
-    @abstractmethod
-    def _get_sklearn_regressor(self) -> RegressorMixin:
-        """
-        Return a new wrapped Regressor from sklearn.
-
-        Returns
-        -------
-        wrapped_regressor:
-            The sklearn Regressor.
-        """
-
-    # noinspection PyProtectedMember
-    def mean_squared_error(self, validation_or_test_set: TabularDataset) -> float:
-        """
-        Compute the mean squared error (MSE) on the given data.
+        Summarize the regressor's metrics on the given data.
 
         Parameters
         ----------
@@ -102,28 +30,75 @@ class Regressor(ABC):
 
         Returns
         -------
-        mean_squared_error:
-            The calculated mean squared error (the average of the distance of each individual row squared).
+        metrics:
+            A table containing the regressor's metrics.
 
         Raises
         ------
-        TypeError
-            If a table is passed instead of a tabular dataset.
+        ModelNotFittedError
+            If the classifier has not been fitted yet.
         """
-        from sklearn.metrics import mean_squared_error as sk_mean_squared_error
+        if not self.is_fitted:
+            raise ModelNotFittedError
 
-        if not isinstance(validation_or_test_set, TabularDataset) and isinstance(validation_or_test_set, Table):
-            raise PlainTableError
-        expected = validation_or_test_set.target
-        predicted = self.predict(validation_or_test_set.features).target
+        validation_or_test_set = _extract_table(validation_or_test_set)
 
-        _check_metrics_preconditions(predicted, expected)
-        return sk_mean_squared_error(expected._data, predicted._data)
+        return RegressionMetrics.summarize(
+            self.predict(validation_or_test_set),
+            validation_or_test_set.get_column(self.get_target_name()),
+        )
 
-    # noinspection PyProtectedMember
-    def mean_absolute_error(self, validation_or_test_set: TabularDataset) -> float:
+    def coefficient_of_determination(self, validation_or_test_set: Table | TabularDataset) -> float:
+        """
+        Compute the coefficient of determination (R²) of the regressor on the given data.
+
+        The coefficient of determination compares the regressor's predictions to another model that always predicts the
+        mean of the target values. It is a measure of how well the regressor explains the variance in the target values.
+
+        The **higher** the coefficient of determination, the better the regressor. Results range from negative infinity
+        to 1.0. You can interpret the coefficient of determination as follows:
+
+        | R²         | Interpretation                                                                             |
+        | ---------- | ------------------------------------------------------------------------------------------ |
+        | 1.0        | The model perfectly predicts the target values. Did you overfit?                           |
+        | (0.0, 1.0) | The model is better than predicting the mean of the target values. You should be here.     |
+        | 0.0        | The model is as good as predicting the mean of the target values. Try something else.      |
+        | (-∞, 0.0)  | The model is worse than predicting the mean of the target values. Something is very wrong. |
+
+        **Note:** Some other libraries call this metric `r2_score`.
+
+        Parameters
+        ----------
+        validation_or_test_set:
+            The validation or test set.
+
+        Returns
+        -------
+        coefficient_of_determination:
+            The coefficient of determination of the regressor.
+
+        Raises
+        ------
+        ModelNotFittedError
+            If the classifier has not been fitted yet.
+        """
+        if not self.is_fitted:
+            raise ModelNotFittedError
+
+        validation_or_test_set = _extract_table(validation_or_test_set)
+
+        return RegressionMetrics.coefficient_of_determination(
+            self.predict(validation_or_test_set),
+            validation_or_test_set.get_column(self.get_target_name()),
+        )
+
+    def mean_absolute_error(self, validation_or_test_set: Table | TabularDataset) -> float:
         """
         Compute the mean absolute error (MAE) of the regressor on the given data.
+
+        The mean absolute error is the average of the absolute differences between the predicted and expected target
+        values. The **lower** the mean absolute error, the better the regressor. Results range from 0.0 to positive
+        infinity.
 
         Parameters
         ----------
@@ -133,32 +108,149 @@ class Regressor(ABC):
         Returns
         -------
         mean_absolute_error:
-            The calculated mean absolute error (the average of the distance of each individual row).
+            The mean absolute error of the regressor.
 
         Raises
         ------
-        TypeError
-            If a table is passed instead of a tabular dataset.
+        ModelNotFittedError
+            If the classifier has not been fitted yet.
         """
-        from sklearn.metrics import mean_absolute_error as sk_mean_absolute_error
+        if not self.is_fitted:
+            raise ModelNotFittedError
 
-        if not isinstance(validation_or_test_set, TabularDataset) and isinstance(validation_or_test_set, Table):
-            raise PlainTableError
-        expected = validation_or_test_set.target
-        predicted = self.predict(validation_or_test_set.features).target
+        validation_or_test_set = _extract_table(validation_or_test_set)
 
-        _check_metrics_preconditions(predicted, expected)
-        return sk_mean_absolute_error(expected._data, predicted._data)
+        return RegressionMetrics.mean_absolute_error(
+            self.predict(validation_or_test_set),
+            validation_or_test_set.get_column(self.get_target_name()),
+        )
+
+    def mean_directional_accuracy(self, validation_or_test_set: Table | TabularDataset) -> float:
+        """
+        Compute the mean directional accuracy (MDA) of the regressor on the given data.
+
+        This metric compares two consecutive target values and checks if the predicted direction (down/unchanged/up)
+        matches the expected direction. The mean directional accuracy is the proportion of correctly predicted
+        directions. The **higher** the mean directional accuracy, the better the regressor. Results range from 0.0 to
+        1.0.
+
+        This metric is useful for time series data, where the order of the target values has a meaning. It is not useful
+        for other types of data. Because of this, it is not included in the `summarize_metrics` method.
+
+        Parameters
+        ----------
+        validation_or_test_set:
+            The validation or test set.
+
+        Returns
+        -------
+        mean_directional_accuracy:
+            The mean directional accuracy of the regressor.
+
+        Raises
+        ------
+        ModelNotFittedError
+            If the classifier has not been fitted yet.
+        """
+        if not self.is_fitted:
+            raise ModelNotFittedError
+
+        validation_or_test_set = _extract_table(validation_or_test_set)
+
+        return RegressionMetrics.mean_directional_accuracy(
+            self.predict(validation_or_test_set),
+            validation_or_test_set.get_column(self.get_target_name()),
+        )
+
+    def mean_squared_error(self, validation_or_test_set: Table | TabularDataset) -> float:
+        """
+        Compute the mean squared error (MSE) of the regressor on the given data.
+
+        The mean squared error is the average of the squared differences between the predicted and expected target
+        values. The **lower** the mean squared error, the better the regressor. Results range from 0.0 to positive
+        infinity.
+
+        **Note:** To get the root mean squared error (RMSE), take the square root of the result.
+
+        Parameters
+        ----------
+        validation_or_test_set:
+            The validation or test set.
+
+        Returns
+        -------
+        mean_squared_error:
+            The mean squared error of the regressor.
+
+        Raises
+        ------
+        ModelNotFittedError
+            If the classifier has not been fitted yet.
+        """
+        if not self.is_fitted:
+            raise ModelNotFittedError
+
+        validation_or_test_set = _extract_table(validation_or_test_set)
+
+        return RegressionMetrics.mean_squared_error(
+            self.predict(validation_or_test_set),
+            validation_or_test_set.get_column(self.get_target_name()),
+        )
+
+    def median_absolute_deviation(self, validation_or_test_set: Table | TabularDataset) -> float:
+        """
+        Compute the median absolute deviation (MAD) of the regressor on the given data.
+
+        The median absolute deviation is the median of the absolute differences between the predicted and expected
+        target values. The **lower** the median absolute deviation, the better the regressor. Results range from 0.0 to
+        positive infinity.
+
+        Parameters
+        ----------
+        validation_or_test_set:
+            The validation or test set.
+
+        Returns
+        -------
+        median_absolute_deviation:
+            The median absolute deviation of the regressor.
+
+        Raises
+        ------
+        ModelNotFittedError
+            If the classifier has not been fitted yet.
+        """
+        if not self.is_fitted:
+            raise ModelNotFittedError
+
+        validation_or_test_set = _extract_table(validation_or_test_set)
+
+        return RegressionMetrics.median_absolute_deviation(
+            self.predict(validation_or_test_set),
+            validation_or_test_set.get_column(self.get_target_name()),
+        )
 
 
-# noinspection PyProtectedMember
-def _check_metrics_preconditions(actual: Column, expected: Column) -> None:
-    if not actual.type.is_numeric():
+def _check_metrics_preconditions(actual: Column, expected: Column) -> None:  # pragma: no cover
+    if not actual.type.is_numeric:
         raise TypeError(f"Column 'actual' is not numerical but {actual.type}.")
-    if not expected.type.is_numeric():
+    if not expected.type.is_numeric:
         raise TypeError(f"Column 'expected' is not numerical but {expected.type}.")
 
-    if actual._data.size != expected._data.size:
+    if actual.number_of_rows != expected.number_of_rows:
         raise ColumnLengthMismatchError(
-            "\n".join([f"{column.name}: {column._data.size}" for column in [actual, expected]]),
+            "\n".join(
+                [
+                    f"{actual.name}: {actual.number_of_rows}",
+                    f"{expected.name}: {expected.number_of_rows}",
+                ],
+            ),
         )
+
+
+def _extract_table(table_or_dataset: Table | TabularDataset) -> Table:
+    """Extract the table from the given table or dataset."""
+    if isinstance(table_or_dataset, TabularDataset):
+        return table_or_dataset.to_table()
+    else:
+        return table_or_dataset

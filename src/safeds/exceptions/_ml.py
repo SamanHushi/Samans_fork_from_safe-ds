@@ -1,3 +1,6 @@
+from safeds.data.image.typing import ImageSize
+
+
 class DatasetMissesFeaturesError(ValueError):
     """
     Raised when a dataset misses feature columns.
@@ -33,11 +36,18 @@ class LearningError(Exception):
         super().__init__(f"Error occurred while learning: {reason}")
 
 
-class ModelNotFittedError(Exception):
+class ModelNotFittedError(RuntimeError):
     """Raised when a model is used before fitting it."""
 
     def __init__(self) -> None:
         super().__init__("The model has not been fitted yet.")
+
+
+class InvalidModelStructureError(Exception):
+    """Raised when the structure of the model is invalid."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(f"The model structure is invalid: {reason}")
 
 
 class PredictionError(Exception):
@@ -66,9 +76,9 @@ class FeatureDataMismatchError(Exception):
 class InputSizeError(Exception):
     """Raised when the amount of features being passed to a network does not match with its input size."""
 
-    def __init__(self, table_size: int, input_layer_size: int) -> None:
+    def __init__(self, data_size: int | ImageSize, input_layer_size: int | ImageSize) -> None:
         super().__init__(
-            f"The amount of columns being passed to the network({table_size}) does not match with its input size({input_layer_size}). Consider changing the number of neurons in the first layer or reformatting the table.",
+            f"The data size being passed to the network({data_size}) does not match with its input size({input_layer_size}). Consider changing the data size of the model or reformatting the data.",
         )
 
 
@@ -81,17 +91,5 @@ class PlainTableError(TypeError):
                 "This method needs a tabular dataset. "
                 "It knows which columns are features and which are the target to predict.\n"
                 "Use `Table.to_tabular_dataset()` to create a tabular dataset."
-            ),
-        )
-
-
-class NonTimeSeriesError(Exception):
-    """Raised when a table is used instead of a TimeSeries in a regression or classification."""
-
-    def __init__(self) -> None:
-        super().__init__(
-            (
-                "This method needs a time series.\nA time series is a table that additionally knows which columns are"
-                " time and which are the target to predict.\n"
             ),
         )

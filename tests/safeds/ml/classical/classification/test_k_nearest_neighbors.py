@@ -18,15 +18,12 @@ class TestNumberOfNeighbors:
 
     def test_should_be_passed_to_sklearn(self, training_set: TabularDataset) -> None:
         fitted_model = KNearestNeighborsClassifier(number_of_neighbors=2).fit(training_set)
-        assert fitted_model._wrapped_classifier is not None
-        assert fitted_model._wrapped_classifier.n_neighbors == 2
+        assert fitted_model._wrapped_model is not None
+        assert fitted_model._wrapped_model.n_neighbors == 2
 
     @pytest.mark.parametrize("number_of_neighbors", [-1, 0], ids=["minus_one", "zero"])
     def test_should_raise_if_less_than_or_equal_to_0(self, number_of_neighbors: int) -> None:
-        with pytest.raises(
-            OutOfBoundsError,
-            match=rf"number_of_neighbors \(={number_of_neighbors}\) is not inside \[1, \u221e\)\.",
-        ):
+        with pytest.raises(OutOfBoundsError):
             KNearestNeighborsClassifier(number_of_neighbors=number_of_neighbors)
 
     def test_should_raise_if_greater_than_sample_size(self, training_set: TabularDataset) -> None:

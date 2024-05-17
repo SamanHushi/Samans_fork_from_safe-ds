@@ -1,37 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from pathlib import Path
-
-
-class UnknownColumnNameError(KeyError):
-    """
-    Exception raised for trying to access an invalid column name.
-
-    Parameters
-    ----------
-    column_names:
-        The name of the column that was tried to be accessed.
-    """
-
-    def __init__(self, column_names: list[str], similar_columns: list[str] | None = None):
-        class _UnknownColumnNameErrorMessage(
-            str,
-        ):  # This class is necessary for the newline character in a KeyError exception. See https://stackoverflow.com/a/70114007
-            def __repr__(self) -> str:
-                return str(self)
-
-        error_message = f"Could not find column(s) '{', '.join(column_names)}'."
-
-        if similar_columns is not None and len(similar_columns) > 0:
-            error_message += f"\nDid you mean '{similar_columns}'?"
-
-        super().__init__(_UnknownColumnNameErrorMessage(error_message))
-
-
-class NonNumericColumnError(Exception):
+class NonNumericColumnError(TypeError):
     """Exception raised for trying to do numerical operations on a non-numerical column."""
 
     def __init__(self, column_info: str, help_msg: str | None = None) -> None:
@@ -53,7 +23,7 @@ class MissingValuesColumnError(Exception):
         )
 
 
-class DuplicateColumnNameError(Exception):
+class DuplicateColumnError(ValueError):
     """
     Exception raised for trying to modify a table resulting in a duplicate column name.
 
@@ -120,11 +90,18 @@ class ColumnSizeError(Exception):
         super().__init__(f"Expected a column of size {expected_size} but got column of size {actual_size}.")
 
 
-class ColumnLengthMismatchError(Exception):
+class ColumnLengthMismatchError(ValueError):
     """Exception raised when the lengths of two or more columns do not match."""
 
     def __init__(self, column_info: str):
         super().__init__(f"The length of at least one column differs: \n{column_info}")
+
+
+class OutputLengthMismatchError(Exception):
+    """Exception raised when the lengths of the input and output container does not match."""
+
+    def __init__(self, output_info: str):
+        super().__init__(f"The length of the output container differs: \n{output_info}")
 
 
 class TransformerNotFittedError(Exception):
@@ -144,37 +121,6 @@ class ValueNotPresentWhenFittedError(Exception):
             "Value(s) not present in the table the transformer was fitted on:"
             f" {line_break}{line_break.join(values_info)}",
         )
-
-
-class WrongFileExtensionError(Exception):
-    """Exception raised when the file has the wrong file extension."""
-
-    def __init__(self, file: str | Path, file_extension: str | list[str]) -> None:
-        super().__init__(
-            f"The file {file} has a wrong file extension. Please provide a file with the following extension(s):"
-            f" {file_extension}",
-        )
-
-
-class IllegalSchemaModificationError(Exception):
-    """Exception raised when modifying a schema in a way that is inconsistent with the subclass's requirements."""
-
-    def __init__(self, msg: str) -> None:
-        super().__init__(f"Illegal schema modification: {msg}")
-
-
-class ColumnIsTargetError(IllegalSchemaModificationError):
-    """Exception raised when removing the target column of a TimeSeries."""
-
-    def __init__(self, column_name: str) -> None:
-        super().__init__(f'Column "{column_name}" is the target column and cannot be removed.')
-
-
-class ColumnIsTimeError(IllegalSchemaModificationError):
-    """Exception raised when removing the time column of a TimeSeries."""
-
-    def __init__(self, column_name: str) -> None:
-        super().__init__(f'Column "{column_name}" is the time column and cannot be removed.')
 
 
 class IllegalFormatError(Exception):

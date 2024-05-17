@@ -18,12 +18,12 @@ class TestAlpha:
 
     def test_should_be_passed_to_sklearn(self, training_set: TabularDataset) -> None:
         fitted_model = LassoRegressor(alpha=1).fit(training_set)
-        assert fitted_model._wrapped_regressor is not None
-        assert fitted_model._wrapped_regressor.alpha == 1
+        assert fitted_model._wrapped_model is not None
+        assert fitted_model._wrapped_model.alpha == 1
 
     @pytest.mark.parametrize("alpha", [-0.5], ids=["minus_zero_point_5"])
     def test_should_raise_if_less_than_0(self, alpha: float) -> None:
-        with pytest.raises(OutOfBoundsError, match=rf"alpha \(={alpha}\) is not inside \[0, \u221e\)\."):
+        with pytest.raises(OutOfBoundsError):
             LassoRegressor(alpha=alpha)
 
     def test_should_warn_if_equal_to_0(self) -> None:

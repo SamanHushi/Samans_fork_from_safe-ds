@@ -1,6 +1,6 @@
 import pytest
 from safeds.data.tabular.containers import Table
-from safeds.exceptions import DuplicateColumnNameError, UnknownColumnNameError
+from safeds.exceptions import ColumnNotFoundError, DuplicateColumnError
 
 
 @pytest.mark.parametrize(
@@ -17,11 +17,11 @@ def test_should_rename_column(name_from: str, name_to: str, column_one: str, col
 
 @pytest.mark.parametrize("table", [Table({"A": [1], "B": [2]}), Table()], ids=["normal", "empty"])
 def test_should_raise_if_old_column_does_not_exist(table: Table) -> None:
-    with pytest.raises(UnknownColumnNameError, match=r"Could not find column\(s\) 'C'"):
+    with pytest.raises(ColumnNotFoundError):
         table.rename_column("C", "D")
 
 
 def test_should_raise_if_new_column_exists_already() -> None:
     table: Table = Table({"A": [1], "B": [2]})
-    with pytest.raises(DuplicateColumnNameError, match=r"Column 'B' already exists."):
+    with pytest.raises(DuplicateColumnError):
         table.rename_column("A", "B")

@@ -1,7 +1,7 @@
 import pytest
 from safeds.data.labeled.containers import TabularDataset
 from safeds.data.tabular.containers import Table
-from safeds.exceptions import UnknownColumnNameError
+from safeds.exceptions import ColumnNotFoundError
 
 
 @pytest.mark.parametrize(
@@ -16,8 +16,8 @@ from safeds.exceptions import UnknownColumnNameError
             },
             "T",
             ["D", "E"],
-            UnknownColumnNameError,
-            r"Could not find column\(s\) 'D, E'",
+            ColumnNotFoundError,
+            None,
         ),
         (
             {
@@ -28,8 +28,8 @@ from safeds.exceptions import UnknownColumnNameError
             },
             "D",
             [],
-            UnknownColumnNameError,
-            r"Could not find column\(s\) 'D'",
+            ColumnNotFoundError,
+            None,
         ),
         (
             {
@@ -75,8 +75,8 @@ from safeds.exceptions import UnknownColumnNameError
             ),
             "T",
             ["D", "E"],
-            UnknownColumnNameError,
-            r"Could not find column\(s\) 'D, E'",
+            ColumnNotFoundError,
+            None,
         ),
         (
             Table(
@@ -89,8 +89,8 @@ from safeds.exceptions import UnknownColumnNameError
             ),
             "D",
             [],
-            UnknownColumnNameError,
-            r"Could not find column\(s\) 'D'",
+            ColumnNotFoundError,
+            None,
         ),
         (
             Table(
@@ -150,7 +150,7 @@ def test_should_raise_error(
     target_name: str,
     extra_names: list[str] | None,
     error: type[Exception],
-    error_msg: str,
+    error_msg: str | None,
 ) -> None:
     with pytest.raises(error, match=error_msg):
         TabularDataset(data, target_name=target_name, extra_names=extra_names)
@@ -250,5 +250,5 @@ def test_should_create_a_tabular_dataset(
     assert isinstance(tabular_dataset, TabularDataset)
     assert tabular_dataset._extras.column_names == extra_names
     assert tabular_dataset._target.name == target_name
-    assert tabular_dataset._extras == data.keep_only_columns(extra_names)
+    assert tabular_dataset._extras == data.remove_columns_except(extra_names)
     assert tabular_dataset._target == data.get_column(target_name)
